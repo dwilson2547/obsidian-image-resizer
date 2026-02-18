@@ -1,90 +1,74 @@
-# Obsidian Sample Plugin
+# Image Resizer — Obsidian Plugin
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+Automatically downsizes images added to your vault to configurable maximum dimensions. Images that are already smaller than the limits pass through untouched.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+## Features
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open modal (simple)" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+- **Automatic resizing** — images are resized when pasted, dragged, or imported into the vault
+- **Aspect ratio preserved** — images are scaled proportionally, never stretched
+- **High-quality downscaling** — uses the browser's best interpolation
+- **Configurable limits** — set max width, max height, or both
+- **JPEG quality control** — adjustable quality slider for JPEG/WebP output
+- **Optional PNG → JPEG conversion** — shrink PNGs by converting to JPEG on resize
+- **Batch commands** — resize all images in the vault or current folder on demand
+- **Non-destructive for small images** — images within limits are never touched
 
-## First time developing plugins?
+## Settings
 
-Quick starting guide for new plugin devs:
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Maximum width | 1920 px | Max width in pixels. Set to 0 to ignore. |
+| Maximum height | 1080 px | Max height in pixels. Set to 0 to ignore. |
+| JPEG quality | 85 | Output quality for JPEG/WebP (1–100) |
+| Convert PNG to JPEG | Off | Convert PNGs to JPEG when resizing (loses transparency) |
+| Resize on paste | On | Auto-resize images pasted into notes |
+| Resize on drop/import | On | Auto-resize images dragged/imported into vault |
+| Show notification | On | Display a notice with before/after dimensions |
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+## Commands
 
-## Releasing new releases
+- **Resize all images in vault** — scans every image and resizes any that exceed limits
+- **Resize images in current folder** — only processes images in the active note's folder
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+## Installation
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+### From source
 
-## Adding your plugin to the community plugin list
+1. Clone this repo into your vault's `.obsidian/plugins/` directory:
+   ```bash
+   cd /path/to/vault/.obsidian/plugins
+   git clone <repo-url> image-resizer
+   cd image-resizer
+   ```
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+2. Install dependencies and build:
+   ```bash
+   npm install
+   npm run build
+   ```
 
-## How to use
+3. Restart Obsidian and enable **Image Resizer** in Settings → Community plugins.
 
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
+### Manual install
 
-## Manually installing the plugin
+1. Download `main.js`, `manifest.json`, and `styles.css` (if present) from the latest release.
+2. Create a folder at `<vault>/.obsidian/plugins/image-resizer/`.
+3. Copy the files into that folder.
+4. Restart Obsidian and enable the plugin.
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+## How it works
 
-## Improve code quality with eslint
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- This project already has eslint preconfigured, you can invoke a check by running`npm run lint`
-- Together with a custom eslint [plugin](https://github.com/obsidianmd/eslint-plugin) for Obsidan specific code guidelines.
-- A GitHub action is preconfigured to automatically lint every commit on all branches.
+The plugin listens for `create` and `modify` events on the vault. When an image file is detected:
 
-## Funding URL
+1. The image bytes are read from the vault.
+2. The image is loaded into an `<img>` element to get its natural dimensions.
+3. A scale factor is computed from the max width/height settings.
+4. If the image is already within limits (scale ≥ 1), nothing happens.
+5. Otherwise, the image is drawn at the new size onto an HTML canvas with high-quality smoothing.
+6. The canvas is exported as a blob and written back to the vault.
 
-You can include funding URLs where people who use your plugin can financially support it.
+A 500ms debounce prevents processing files that are still being written, and a processing guard prevents infinite loops from the write-back triggering another modify event.
 
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
+## Supported formats
 
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
-```
-
-If you have multiple URLs, you can also do:
-
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
-
-## API Documentation
-
-See https://docs.obsidian.md
+PNG, JPEG, WebP, BMP — anything the browser's `<img>` element can decode.
